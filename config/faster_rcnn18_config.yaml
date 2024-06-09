@@ -1,0 +1,32 @@
+# Description: Configuration file for Faster R-CNN model
+project_name: 'faster_rcnn18'
+log_dir: 'logs'
+log_interval: 10
+checkpoint_interval: 5
+
+# Data configuration
+dataroot: 'data'
+train_data: 'train'
+val_data: 'val'
+test_data: 'test'
+
+# Model configuration
+model: 'faster_rcnn'
+backbone: 'resnet18'
+num_classes: 20
+img_height: 640
+img_width: 640
+
+# Training configuration
+batch_size: 2
+num_epochs: 10
+learning_rate: 0.001
+optimizer: 'sgd'
+momentum: 0.9
+weight_decay: 0.0005
+lr_scheduler: 'linear'
+step_size: 5
+gamma: 0.1
+
+# Device configuration
+device: 'gpu'
