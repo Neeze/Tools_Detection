@@ -40,9 +40,9 @@ def main():
         train_loss = train_one_epoch(model, optimizer, train_loader, device, epoch, logger)
         scheduler.step() # Update learning rate
 
-        # Evaluate on the validation set (optional)
+        # Evaluate on the validation set 
         if (epoch + 1) % config.get("val_interval", 1) == 0: # Validate every epoch by default
-            val_loss, mAP = evaluate(model, val_loader, device)
+            val_loss = evaluate(model, val_loader, device, logger)
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 save_model(model, epoch, optimizer, scheduler, config)
