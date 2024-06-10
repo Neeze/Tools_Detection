@@ -8,7 +8,7 @@ from src.utils.get_optimizer import get_optimizer
 from src.utils.get_scheduler import get_scheduler
 from src.utils.logger import TrainingLogger
 from src.utils.general_utils import read_config
-from src.utils.engine import train_one_epoch, evaluate, save_model
+from src.utils.engine import train_one_epoch, evaluate, save_model, load_model
 
 
 def main():
@@ -25,9 +25,12 @@ def main():
     # Create model
     model = fasterrcnn_resnet18(num_classes=config["num_classes"], pretrained=True, coco_model=True).to(device)
     
-    # Create optimizer and learning rate scheduler
-    optimizer = get_optimizer(model, config)
-    scheduler = get_scheduler(optimizer, config)
+    if "pretrained_model_path" in config.keys():
+        model, optimizer, scheduler = load_model(model, config["pretrained_model_path"])
+    else:
+        optimizer = get_optimizer(model, config)
+        scheduler = get_scheduler(optimizer, config)
+
    
     # Training loop
     start_epoch = 0

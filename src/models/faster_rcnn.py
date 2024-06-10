@@ -68,20 +68,3 @@ def fasterrcnn_resnet18(num_classes, pretrained=True, coco_model=False):
         box_roi_pool=roi_pooler
     )
     return model
-
-
-
-if __name__ == '__main__':
-    import sys
-    import os
-    import torch
-    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-    from utils.model_summary import summary
-    model = fasterrcnn_resnet18(num_classes=81, pretrained=True, coco_model=True)
-    summary(model)
-    
-    img = torch.rand(2, 3, 640, 640)
-    model.eval()
-    with torch.no_grad():
-        prediction = model(img)
-        print(prediction)
