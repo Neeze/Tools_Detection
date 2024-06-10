@@ -31,7 +31,7 @@ Before you begin, ensure you have met the following requirements:
 * You have installed the latest version of `<coding_language>`
 * You have a `<Windows/Linux/Mac>` machine. State which OS is supported and which is not.
 * You have read `<guide/link/documentation_related_to_project>`.
-* Modules: numpy, torch, torchvision, tqdm, torchsummary, torchinfo, sklearn, wandb
+* Modules: numpy, torch, torchvision, tqdm, torchsummary, torchinfo, sklearn, wandb, pycocotools
 
 ## Installing <Project_Name>
 

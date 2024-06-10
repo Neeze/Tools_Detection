@@ -4,3 +4,16 @@ data/**/*.jpeg
 data/**/*.gif
 data/**/*.txt
 data/**/*.zip
+data/**/*.json
+
+**/__pycache__/
+
+wandb/
+
+**/*.cpython-37.pyc
+**/*.cpython-38.pyc
+**/*.pyc
+
+visualizer.py
+
+checkpoints/*.pth
