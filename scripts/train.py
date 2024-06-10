@@ -2,7 +2,6 @@ import torch
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
 from src.models.faster_rcnn import fasterrcnn_resnet18
 from src.utils.dataloader import create_dataloader
 from src.utils.get_optimizer import get_optimizer
@@ -36,6 +35,7 @@ def main():
     best_val_loss = float("inf")
 
     for epoch in range(start_epoch, num_epochs):
+        print(f"Epoch {epoch + 1}/{num_epochs}")
         # Train for one epoch
         train_loss = train_one_epoch(model, optimizer, train_loader, device, epoch, logger)
         scheduler.step() # Update learning rate
