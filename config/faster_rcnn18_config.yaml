@@ -7,7 +7,7 @@ checkpoint_interval: 5
 # Data configuration
 dataroot: 'data'
 train_data: 'train'
-val_data: 'val'
+val_data: 'valid'
 test_data: 'test'
 
 # Model configuration
@@ -18,10 +18,10 @@ img_height: 640
 img_width: 640
 
 # Training configuration
-batch_size: 2
+batch_size: 1
 num_epochs: 10
 learning_rate: 0.001
-optimizer: 'sgd'
+optimizer: 'SGD'
 momentum: 0.9
 weight_decay: 0.0005
 lr_scheduler: 'linear'
