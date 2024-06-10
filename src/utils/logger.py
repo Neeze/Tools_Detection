@@ -9,6 +9,7 @@ class TrainingLogger:
             config: A dictionary containing the configuration parameters.
         """
         wandb.init(project=config["project_name"], config=config)
+        self.config = config
 
     def log_epoch_metrics(self, epoch: int, train_loss: float, val_loss: float, lr: float, **kwargs):
         """Logs metrics for a training epoch.
