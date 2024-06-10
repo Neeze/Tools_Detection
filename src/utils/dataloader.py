@@ -2,8 +2,9 @@ import os
 import torch
 from torch.utils.data import DataLoader
 from torchvision.datasets import CocoDetection
-from transform import ImageTransformer
-from general_utils import read_config
+from .transform import ImageTransformer
+from .general_utils import read_config
+from .dataset import ImageDataset
 
 def create_dataloader(config: dict, is_train: bool) -> DataLoader:
     """Creates a PyTorch DataLoader for object detection.
@@ -20,15 +21,15 @@ def create_dataloader(config: dict, is_train: bool) -> DataLoader:
 
     if is_train:
         data_path = os.path.join(config["dataroot"], config["train_data"])
+        dataset = ImageDataset(image_dir=os.path.join(data_path, "images"),
+                           label_dir=os.path.join(data_path, "labels"),
+                           transform=image_transformer, is_train=True)
     else:
         data_path = os.path.join(config["dataroot"], config["val_data"])
-
-    dataset = CocoDetection(
-        root= os.path.join(data_path, "images"),
-        annFile= os.path.join(data_path, "labels", "labels.json"),
-        transforms=lambda img, target: (image_transformer(img, is_train), target)
-    )
-
+        dataset = ImageDataset(image_dir=os.path.join(data_path, "images"),
+                           label_dir=os.path.join(data_path, "labels"),
+                           transform=image_transformer, is_train=False)
+    
     dataloader = DataLoader(
         dataset,
         batch_size=config["batch_size"],
