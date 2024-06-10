@@ -1,6 +1,7 @@
 import torch
 import sys
 import os
+import argparse
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from src.models.faster_rcnn import fasterrcnn_resnet18
 from src.utils.dataloader import create_dataloader
@@ -10,9 +11,12 @@ from src.utils.logger import TrainingLogger
 from src.utils.general_utils import read_config
 from src.utils.engine import train_one_epoch, evaluate, save_model, load_model
 
+def get_args():
+    parser = argparse.ArgumentParser(description="Train model")
+    parser.add_argument("--config", type=str, default="config/faster_rcnn18_config.yaml", help="Path to the config file")
+    return parser.parse_args()
 
-def main():
-    config = read_config("config/faster_rcnn18_config.yaml")  # Load config
+def main(config: dict):
     logger = TrainingLogger(config)  # Initialize logger (e.g., Weights & Biases)
 
     device = torch.device('cuda' if torch.cuda.is_available() and config["device"] == 'gpu' else 'cpu')
@@ -31,7 +35,6 @@ def main():
         optimizer = get_optimizer(model, config)
         scheduler = get_scheduler(optimizer, config)
 
-   
     # Training loop
     start_epoch = 0
     num_epochs = config["num_epochs"]
@@ -51,4 +54,6 @@ def main():
                 save_model(model, epoch, optimizer, scheduler, config)
 
 if __name__ == "__main__":
-    main()
+    args = get_args()
+    config = read_config(args.config)
+    main(config)
