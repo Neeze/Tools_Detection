@@ -264,4 +264,4 @@ if __name__ == "__main__":
         "scores": torch.tensor([0.85, 0.92, 0.2]),
     }
 
-    visualize_predictions(image_path, predictions, "bounding_boxes.txt")
+    visualize_predictions(image_path, predictions, "labels.txt")
