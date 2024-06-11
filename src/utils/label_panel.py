@@ -2,9 +2,10 @@ import torch
 import cv2
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from matplotlib.widgets import TextBox
 
 class DraggableRectangle:
-    def __init__(self, rect, text, label, ax):
+    def __init__(self, rect, text, label, ax, color, update_label_callback):
         self.rect = rect
         self.text = text
         self.label = label
@@ -13,6 +14,8 @@ class DraggableRectangle:
         self.background = None
         self.corner_selected = None
         self.corners = self.create_corners()
+        self.color = color
+        self.update_label_callback = update_label_callback
 
     def create_corners(self):
         # Create corners for resizing
@@ -57,6 +60,8 @@ class DraggableRectangle:
             corner.set_animated(True)
             self.ax.draw_artist(corner)
         self.rect.figure.canvas.blit(self.ax.bbox)
+        # Call the update label callback
+        self.update_label_callback(self)
 
     def on_motion(self, event):
         if self.press is None:
@@ -132,6 +137,10 @@ class DraggableRectangle:
         w, h = self.rect.get_width(), self.rect.get_height()
         return self.label, x, y, x + w, y + h
 
+    def update_label(self, new_label):
+        self.label = new_label
+        self.text.set_text(new_label)
+        self.text.figure.canvas.draw()
 
 def visualize_predictions(image_path, predictions, output_file="bounding_boxes.txt"):
     """Plots bounding boxes and scores on an image with draggable rectangles and saves to file.
@@ -155,19 +164,29 @@ def visualize_predictions(image_path, predictions, output_file="bounding_boxes.t
         else [None] * len(boxes)
     )  # Handle optional labels
 
+    colors = ['red', 'green', 'blue', 'purple', 'orange']  # Define colors for different labels
+
     # Create a Matplotlib figure and axes
     fig, ax = plt.subplots(1, figsize=(10, 8))
     ax.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
 
     draggables = []
+    selected_rectangle = [None]  # Store the currently selected rectangle
+
+    # Update label callback function
+    def update_label(draggable):
+        selected_rectangle[0] = draggable
 
     # Iterate over detected objects
     for box, score, label in zip(boxes, scores, labels):
         xmin, ymin, xmax, ymax = box
 
+        # Assign a color based on the label
+        color = colors[label % len(colors)] if label is not None else 'red'
+
         # Draw bounding box
         rect = patches.Rectangle(
-            (xmin, ymin), xmax - xmin, ymax - ymin, fill=False, edgecolor="red", linewidth=2
+            (xmin, ymin), xmax - xmin, ymax - ymin, fill=False, edgecolor=color, linewidth=2
         )
         ax.add_patch(rect)
 
@@ -187,9 +206,42 @@ def visualize_predictions(image_path, predictions, output_file="bounding_boxes.t
         )
 
         # Make the rectangle draggable
-        draggable = DraggableRectangle(rect, text, label, ax)
+        draggable = DraggableRectangle(rect, text, label, ax, color, update_label)
         draggable.connect()
         draggables.append(draggable)
+
+    # TextBox for changing labels
+    axbox = plt.axes([0.15, 0.01, 0.2, 0.05])  # Adjust position and size as needed
+    text_box = TextBox(axbox, 'New Label: ')
+
+    def submit_label(text):
+        if selected_rectangle[0]:
+            selected_rectangle[0].update_label(text)
+            selected_rectangle[0].rect.set_edgecolor(colors[int(text) % len(colors)])
+
+    text_box.on_submit(submit_label)
+
+    # Function to add a new rectangle
+    def add_rectangle(event):
+        if event.key == 'a' and event.inaxes == ax:
+            x, y = event.xdata, event.ydata
+            rect = patches.Rectangle((x, y), 0, 0, fill=False, edgecolor='red', linewidth=2)
+            ax.add_patch(rect)
+            text = ax.text(x, y, "", fontsize=10, bbox=dict(facecolor="yellow", alpha=0.5))
+            draggable = DraggableRectangle(rect, text, 0, ax, 'red', update_label) # Default label is 0
+            draggable.connect()
+            draggables.append(draggable)
+            selected_rectangle[0] = draggable
+            fig.canvas.draw()
+    
+    # Function to confirm/update a rectangle
+    def confirm_rectangle(event):
+        if event.key == 'enter' and selected_rectangle[0] is not None:
+            selected_rectangle[0] = None  
+            fig.canvas.draw()
+
+    fig.canvas.mpl_connect('key_press_event', add_rectangle)
+    fig.canvas.mpl_connect('key_press_event', confirm_rectangle)
 
     plt.title("Object Detection Results")
     plt.axis("off")
@@ -201,16 +253,15 @@ def visualize_predictions(image_path, predictions, output_file="bounding_boxes.t
             label, xmin, ymin, xmax, ymax = draggable.get_coordinates()
             f.write(f"{label} {xmin:.2f} {ymin:.2f} {xmax:.2f} {ymax:.2f}\n")
 
-
 if __name__ == "__main__":
     # Example Usage (replace with your actual paths and model)
     image_path = "data/valid/images/000002_jpg.rf.XyqagWMEa65XqGa5uLPK.jpg"
 
     # Replace this with your model's actual prediction output
     predictions = {
-        "boxes": torch.tensor([[100, 150, 250, 300], [50, 80, 180, 220]]),
-        "labels": torch.tensor([1, 3]),  # Corrected labels
-        "scores": torch.tensor([0.85, 0.92]),
+        "boxes": torch.tensor([[100, 150, 250, 300], [50, 80, 180, 220], [225.16, 133.23, 375.16, 283.23]]),
+        "labels": torch.tensor([1, 3, 9]),  # Corrected labels
+        "scores": torch.tensor([0.85, 0.92, 0.2]),
     }
 
     visualize_predictions(image_path, predictions, "bounding_boxes.txt")
