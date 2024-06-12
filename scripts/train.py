@@ -48,9 +48,9 @@ def main(config: dict):
 
         # Evaluate on the validation set 
         if (epoch + 1) % config.get("val_interval", 1) == 0: # Validate every epoch by default
-            val_loss = evaluate(model, val_loader, device, logger)
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
+            epoch_loss = evaluate(model, val_loader, device, logger)
+            if epoch_loss < best_val_loss:
+                best_val_loss = epoch_loss
                 save_model(model, epoch, optimizer, scheduler, config)
 
 if __name__ == "__main__":

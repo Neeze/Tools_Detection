@@ -1,6 +1,6 @@
 import torch
 from torchvision import transforms
-from typing import Tuple
+from typing import Tuple, Optional, Dict
 
 
 class ImageTransformer:
@@ -22,29 +22,36 @@ class ImageTransformer:
         # Augmentation specifically for training
         self.train_augmentation = transforms.RandomHorizontalFlip()
 
-    def __call__(self, image: torch.Tensor, target: dict, is_train: bool) -> Tuple[torch.Tensor, dict]:
+    def __call__(self, image: torch.Tensor, target: Optional[Dict[str, torch.Tensor]] = None, is_train: bool = False) -> Tuple[torch.Tensor, Optional[Dict[str, torch.Tensor]]]:
         """Transforms image and bounding boxes.
 
         Args:
             image: The image tensor to be transformed.
-            target: A dictionary containing the target data (e.g., bounding boxes).
+            target: An optional dictionary containing the target data (e.g., bounding boxes).
             is_train: A flag indicating whether the image is for training (True) or testing (False).
 
         Returns:
             The transformed image tensor and the transformed target dictionary.
         """
 
-        _, witdh, height = image.shape
+        _, height, width = image.shape  # Correcting the variable names
 
         # Apply common transformations (resize, to tensor, normalize)
         image = self.transform(image)
-        boxes = target["boxes"]
 
-            
-        # Rescale the coordinates of the bounding boxes
-        transformed_size = torch.tensor(image.shape[1::], dtype=torch.float32)  # [h, w]
-        # boxes = torch.tensor(target["boxes"], dtype=torch.float32)  # Convert directly from target dict
-        boxes[:, [0, 2]] = boxes[:, [0, 2]] * transformed_size[1] / witdh # Normalize x coordinates
-        boxes[:, [1, 3]] = boxes[:, [1, 3]] * transformed_size[0] / height # Normalize y coordinates
-    
+        # Apply training augmentations if in training mode
+        if is_train:
+            image = self.train_augmentation(image)
+
+        # Rescale the coordinates of the bounding boxes if target is provided
+        if target is not None:
+            transformed_size = torch.tensor(image.shape[1:], dtype=torch.float32)  # [h, w]
+            boxes = target["boxes"]
+            boxes = boxes.float()  # Ensuring boxes are float for correct scaling
+            boxes[:, [0, 2]] = boxes[:, [0, 2]] * transformed_size[1] / width  # Rescale x coordinates
+            boxes[:, [1, 3]] = boxes[:, [1, 3]] * transformed_size[0] / height  # Rescale y coordinates
+
+            # Update the target dictionary with the transformed boxes
+            target["boxes"] = boxes
+
         return image, target

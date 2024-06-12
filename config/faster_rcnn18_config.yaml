@@ -19,7 +19,7 @@ img_width: 640
 
 # Training configuration
 batch_size: 1
-num_epochs: 5
+num_epochs: 2
 learning_rate: 0.001
 optimizer: 'SGD'
 momentum: 0.9
@@ -31,8 +31,9 @@ gamma: 0.1
 # Active learning configuration
 active_learning_epochs: 5
 unlabel_data: 'unlabel'
-active_learning_strategy: 'random'
-score_threshold: 0.5
+sampling_num: 10
+active_learning_strategy: 'least_confidence'
+score_threshold: 0.9
 
 # Device configuration
 device: 'gpu'

@@ -156,10 +156,10 @@ def visualize_predictions(image_path, predictions, output_file="bounding_boxes.t
     image = cv2.imread(image_path)
 
     # Convert predictions to numpy arrays
-    boxes = predictions["boxes"].detach().numpy()
-    scores = predictions["scores"].detach().numpy()
+    boxes = predictions["boxes"].detach().cpu().numpy()
+    scores = predictions["scores"].detach().cpu().numpy()
     labels = (
-        predictions["labels"].detach().numpy()
+        predictions["labels"].detach().cpu().numpy()
         if "labels" in predictions
         else [None] * len(boxes)
     )  # Handle optional labels
@@ -254,13 +254,11 @@ def visualize_predictions(image_path, predictions, output_file="bounding_boxes.t
             f.write(f"{label} {xmin:.2f} {ymin:.2f} {xmax:.2f} {ymax:.2f}\n")
 
 if __name__ == "__main__":
-    # Example Usage (replace with your actual paths and model)
     image_path = "data/valid/images/000002_jpg.rf.XyqagWMEa65XqGa5uLPK.jpg"
 
-    # Replace this with your model's actual prediction output
     predictions = {
         "boxes": torch.tensor([[100, 150, 250, 300], [50, 80, 180, 220], [225.16, 133.23, 375.16, 283.23]]),
-        "labels": torch.tensor([1, 3, 9]),  # Corrected labels
+        "labels": torch.tensor([1, 3, 9]), 
         "scores": torch.tensor([0.85, 0.92, 0.2]),
     }
 

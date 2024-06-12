@@ -1,39 +1,52 @@
 import torch
-import numpy as np
-from sklearn.metrics import average_precision_score, accuracy_score, precision_score, recall_score, f1_score
+from torchmetrics.detection.mean_ap import MeanAveragePrecision
+from torchmetrics import Accuracy
 
-# Intersection over Union (IoU)
-def calculate_iou(box1, box2):
-    """Calculates IoU between two bounding boxes (x1, y1, x2, y2)."""
-    x1 = max(box1[0], box2[0])
-    y1 = max(box1[1], box2[1])
-    x2 = min(box1[2], box2[2])
-    y2 = min(box1[3], box2[3])
 
-    intersection_area = max(0, x2 - x1) * max(0, y2 - y1)
-    box1_area = (box1[2] - box1[0]) * (box1[3] - box1[1])
-    box2_area = (box2[2] - box2[0]) * (box2[3] - box2[1])
-    union_area = box1_area + box2_area - intersection_area
+def calculate_map(targets, predictions, num_classes):
+    """Calculates mean Average Precision (mAP) for object detection.
 
-    iou = intersection_area / union_area
-    return iou
+    Args:
+        targets: List of dictionaries, each containing ground truth 'boxes' and 'labels'.
+        predictions: List of dictionaries, each containing predicted 'boxes', 'labels', and 'scores'.
+        num_classes: The number of object classes (including background).
 
-# Mean Average Precision (mAP)
-def calculate_map(y_true, y_pred, num_classes):
-    """Calculates mAP for multi-class object detection."""
-    average_precisions = []
-    for class_id in range(num_classes):
-        ap = average_precision_score(y_true[:, class_id], y_pred[:, class_id])
-        average_precisions.append(ap)
-    mAP = np.mean(average_precisions)
-    return mAP
+    Returns:
+        The calculated mAP value.
+    """
+    
+    metric = MeanAveragePrecision(num_classes=num_classes)
+    metric.update(preds=predictions, target=targets)
+    return metric.compute()["map"]
 
-# Accuracy, Precision, Recall, F1-score (for classification tasks)
-def calculate_classification_metrics(y_true, y_pred):
-    """Calculates classification metrics for a binary or multi-class task."""
-    accuracy = accuracy_score(y_true, y_pred)
-    precision = precision_score(y_true, y_pred, average='weighted')
-    recall = recall_score(y_true, y_pred, average='weighted')
-    f1 = f1_score(y_true, y_pred, average='weighted')
 
-    return accuracy, precision, recall, f1
+def calculate_accuracy(targets, predictions, iou_threshold=0.5):
+    """Calculates accuracy for object detection based on IoU threshold.
+
+    Args:
+        targets: List of dictionaries, each containing ground truth 'boxes' and 'labels'.
+        predictions: List of dictionaries, each containing predicted 'boxes', 'labels', and 'scores'.
+        iou_threshold: The IoU threshold to consider a prediction as correct.
+
+    Returns:
+        The calculated accuracy value.
+    """
+    total_correct = 0
+    total_samples = 0
+
+    for target, prediction in zip(targets, predictions):
+        target_boxes = target["boxes"]
+        target_labels = target["labels"]
+        pred_boxes = prediction["boxes"]
+        pred_labels = prediction["labels"]
+
+        for pred_box, pred_label in zip(pred_boxes, pred_labels):
+            total_samples += 1
+            ious = torchvision.ops.box_iou(pred_box.unsqueeze(0), target_boxes)
+            best_iou, best_target_idx = ious.max(dim=1)
+
+            if best_iou >= iou_threshold and pred_label == target_labels[best_target_idx]:
+                total_correct += 1
+
+    accuracy = total_correct / total_samples if total_samples > 0 else 0
+    return accuracy

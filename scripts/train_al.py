@@ -1,12 +1,9 @@
 import torch
-import os
 import sys
+import os
 import argparse
-from tqdm import tqdm
-from PIL import Image
-from torchvision import transforms
-from torchvision.transforms.functional import to_tensor
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+import shutil
 from src.models.faster_rcnn import fasterrcnn_resnet18
 from src.utils.dataloader import create_dataloader
 from src.utils.engine import train_one_epoch, evaluate
@@ -15,7 +12,12 @@ from src.utils.get_scheduler import get_scheduler
 from src.utils.logger import TrainingLogger
 from src.utils.general_utils import read_config
 from src.utils.label_panel import visualize_predictions
-
+from src.utils.sampling import uncertainty_sampling
+import matplotlib.pyplot as plt
+from torchvision import transforms
+from PIL import Image
+from tqdm import tqdm
+import random
 
 def get_args():
     parser = argparse.ArgumentParser(description="Train model")
@@ -23,22 +25,19 @@ def get_args():
     return parser.parse_args()
 
 def main(config):
-    global transform
-    
     device = torch.device('cuda' if torch.cuda.is_available() and config["device"] == 'gpu' else 'cpu')
     num_classes = config["num_classes"]
+    active_learning_epochs = config["active_learning_epochs"]
     unlabeled_data_path = os.path.join(config["dataroot"], config["unlabel_data"])
-    active_learning_epochs = config["active_learning_epochs"] 
-    batch_size = config["batch_size"]
+    sampling_num = config["sampling_num"]
     score_threshold = config["score_threshold"]
-    
-    # Transform
-    transform = transforms.Compose([
-                transforms.ToPILImage(),
-                transforms.Resize((config["img_height"], config["img_width"])),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-            ])
+    active_learning_strategy = config["active_learning_strategy"]
+
+    # Create image transformer
+    image_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
 
     # 1. Initialization (train initial model on labeled data)
     train_loader = create_dataloader(config, is_train=True)
@@ -47,78 +46,99 @@ def main(config):
     optimizer = get_optimizer(model, config)
     scheduler = get_scheduler(optimizer, config)
     logger = TrainingLogger(config)
-    
-    print(f"Warning: Active learning loop is not implemented yet. Training initial model...")
+
     for epoch in range(config["num_epochs"]):
+        print(f"Epoch {epoch + 1}/{config['num_epochs']}")
         train_one_epoch(model, optimizer, train_loader, device, epoch, logger)
         scheduler.step()
         if (epoch + 1) % config.get("val_interval", 1) == 0:
             evaluate(model, val_loader, device, logger)  # Pass logger for logging
-
-    print("Initial model training completed.")
-    print("Starting active learning loop...")
+    print("Finished initial training")
+    print("Starting Active Learning")
     # 2. Active Learning Loop
-    for round in range(active_learning_epochs):
-        # a. Score images (using model uncertainty - least confidence)
-        unlabeled_scores = score_unlabeled_images(model, unlabeled_data_path, device, score_threshold) 
-
+    for _ in range(active_learning_epochs):
+        print(f"Active Learning Epoch {_ + 1}/{active_learning_epochs}")
+        # a. Score images
+        print("Scoring unlabeled images")
+        unlabeled_scores = score_unlabeled_images(model, unlabeled_data_path, device, score_threshold, active_learning_strategy, image_transform)
+        unlabeled_scores['data/unlabel/20240610_124649.jpg'] = 0.9
         # b. Select images for labeling
-        images_to_label = select_images(unlabeled_scores, batch_size)
-        print("Images to label:", images_to_label)
-        # c. Oracle labeling (simulate by saving model predictions)
-        for image_path in images_to_label:
-            image_name = os.path.basename(image_path)
-            image = Image.open(image_path).convert('RGB') # Load image from unlabeled_data_path
-            image = to_tensor(image)  # Convert PIL Image to Tensor
-            image = transform(image)
-            with torch.no_grad():
-                predictions = model([image.to(device)])[0]
-            # TODO: Save predictions as labels
-            visualize_predictions(image_path, predictions, "labels.txt")  # Save predictions as labels
-            
-            # Move the image from unlabel to train folder (update the data structure)
-            os.replace(image_path, os.path.join(config["dataroot"], config["train_data"], "images", os.path.basename(image_path)))
-            os.replace(image_path.replace(".jpg", ".txt"), os.path.join(config["dataroot"], config["train_data"], "labels", os.path.basename(image_path).replace(".jpg", ".txt")))
+        print("Selecting images for labeling")
+        if len( unlabeled_scores.keys()) > 0:
+            images_to_label = select_images(unlabeled_scores, sampling_num, active_learning_strategy)
+            # c. Oracle labeling (simulate by saving model predictions)
+            print("Labeling images")
+            for image_path in images_to_label:                
+                image = Image.open(image_path).convert('RGB') 
+                image = image_transform(image).to(device)    # Apply transformations
 
-        # e. Model Update (retrain on updated dataset)
-        train_loader = create_dataloader(config, is_train=True)  # Recreate dataloader
-        print(f"Round {round + 1}/{active_learning_epochs}: Retraining model...")
+                with torch.no_grad():
+                    predictions = model([image])[0]
+                
+                new_image_name = os.path.basename(image_path)
+                new_label_name = os.path.basename(image_path).replace(".jpg", ".txt")
+                new_label_path = os.path.join(config["dataroot"], config["train_data"], "labels", new_label_name)
+                visualize_predictions(image_path, predictions, new_label_path)  
+                # Move the image and its label from unlabel to train folder 
+
+                shutil.move(image_path, os.path.join(config["dataroot"], config["train_data"], "images", new_image_name))
+                # shutil.move(image_path.replace(".jpg", ".txt"), os.path.join(config["dataroot"], config["train_data"], "labels", new_label_name))
+        
+        # d. Model Update (retrain on updated dataset)
+        print("Retraining model")
+        train_loader = create_dataloader(config, is_train=True)
         for epoch in range(config["num_epochs"]):
+            print(f"Epoch {epoch + 1}/{config['num_epochs']}")
             train_one_epoch(model, optimizer, train_loader, device, epoch, logger)
             scheduler.step()
             if (epoch + 1) % config.get("val_interval", 1) == 0:
                 evaluate(model, val_loader, device, logger)
 
+def score_unlabeled_images(model, unlabeled_data_path, device, score_threshold, active_learning_strategy, image_transform):
+    """
+    Scores unlabeled images using the specified strategy.
 
-def score_unlabeled_images(model, unlabeled_data_path, device, score_threshold):
-    global transform
+    Args:
+        model: The object detection model.
+        unlabeled_data_path: Path to the directory containing unlabeled images.
+        device: The device (CPU or GPU) to use for inference.
+        score_threshold: Threshold for filtering out low-confidence predictions.
+        active_learning_strategy: The strategy to use for scoring images.
+        image_transform: The image transformation to apply.
+
+    Returns:
+        A dictionary of image paths and their corresponding uncertainty scores.
+    """
     model.eval()
     image_scores = {}
     image_names = os.listdir(unlabeled_data_path)
-
     for image_name in tqdm(image_names, desc="Scoring unlabeled images"):
+        # Check for valid image files
+        if not image_name.lower().endswith(('.jpg', '.jpeg', '.png')):
+            continue
         image_path = os.path.join(unlabeled_data_path, image_name)
-        # TODO: Load image and preprocess
-        image = Image.open(image_path).convert('RGB') # Load image from unlabeled_data_path 
-        image = to_tensor(image)  # Convert PIL Image to Tensor
-        image = transform(image)
-        with torch.no_grad():
-            outputs = model([image.to(device)])[0]
-        
-        # Calculate least confidence (1 - max probability)
-        least_confidence = 1 - outputs['scores'].max().item()
+        image = Image.open(image_path).convert("RGB")
+        image = image_transform(image).to(device)
 
-        # Filter by score threshold and check if any predictions exist
-        if (outputs['scores'] >= score_threshold).any():
-            image_scores[image_path] = least_confidence  
+        image_score = uncertainty_sampling(model, image, device, uncertainty_method='least_confidence')
+
+        # Filter by score threshold
+        if active_learning_strategy == "least_confidence" or active_learning_strategy == "margin_confidence" or active_learning_strategy == "entropy":
+            if image_score >= score_threshold:
+                image_scores[image_path] = image_score
+        elif active_learning_strategy == "random":
+            image_scores[image_path] = image_score  # For random, we don't use threshold
 
     return image_scores
 
-
-def select_images(image_scores, batch_size):
-    """Selects images for labeling based on the lowest confidence scores."""
-    sorted_images = sorted(image_scores, key=image_scores.get)
-    return sorted_images[:batch_size]
+def select_images(image_scores, batch_size, active_learning_strategy):
+    """Selects images for labeling based on the chosen strategy."""
+    if active_learning_strategy == "least_confidence" or active_learning_strategy == "margin_confidence" or active_learning_strategy == "entropy":
+        sorted_images = sorted(image_scores, key=image_scores.get, reverse=True)  # Sort in descending order for uncertainty
+        return sorted_images[:batch_size]
+    elif active_learning_strategy == "random":
+        image_paths = list(image_scores.keys())
+        return random.sample(image_paths, batch_size)   
 
 
 if __name__ == "__main__":

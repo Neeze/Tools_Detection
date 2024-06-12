@@ -156,12 +156,12 @@ def evaluate(model, data_loader, device, logger):
         sum_losses = sum(loss for loss in losses.values())
         loss_value = sum_losses.item()
         epoch_loss += loss_value
-        # Calculate mAP (you'll need to adapt this to your specific mAP implementation)
-        # TODO: Implement mAP calculation for classes
-        # Log validation loss and mAP
-        epoch_loss /= len(data_loader)
-        logger.log_epoch_metrics(None, None, epoch_loss, None, mAP=None)
-        return epoch_loss
+    # Calculate mAP (you'll need to adapt this to your specific mAP implementation)
+    # TODO: Implement mAP calculation for classes
+    # Log validation loss and mAP
+    epoch_loss /= len(data_loader)
+    logger.log_epoch_metrics(None, None, epoch_loss, None, mAP=None)
+    return epoch_loss
 
 def save_model(model, epoch, optimizer, scheduler, config):
     """Saves the model checkpoint."""
