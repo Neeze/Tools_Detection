@@ -161,7 +161,7 @@ def evaluate(model, data_loader, device, logger):
     # TODO: Implement mAP calculation for classes
     # Log validation loss and mAP
     # Calculate mAP, precision, and recall, Accuracy
-    map_value = calculate_map(targets, result, logger.config['num_classes'], iou_threshold=0.5)
+    map_value = calculate_map(targets, result, logger.config['num_classes'])
     precision, recall = calculate_precision_recall(targets, result)
     accuracy = calculate_accuracy(targets, result)
     
