@@ -15,5 +15,6 @@ wandb/
 **/*.pyc
 
 visualizer.py
+test.py
 
 checkpoints/*.pth
