@@ -142,7 +142,7 @@ class DraggableRectangle:
         self.text.set_text(new_label)
         self.text.figure.canvas.draw()
 
-def visualize_predictions(image_path, predictions, output_file="bounding_boxes.txt"):
+def visualize_predictions(image:torch.Tensor, predictions, output_file="bounding_boxes.txt"):
     """Plots bounding boxes and scores on an image with draggable rectangles and saves to file.
 
     Args:
@@ -152,8 +152,8 @@ def visualize_predictions(image_path, predictions, output_file="bounding_boxes.t
         output_file: File to save the bounding box coordinates.
     """
 
-    # Load the image
-    image = cv2.imread(image_path)
+    # # Load the image
+    # image = cv2.imread(image_path)
 
     # Convert predictions to numpy arrays
     boxes = predictions["boxes"].detach().cpu().numpy()

@@ -13,7 +13,7 @@ test_data: 'test'
 # Model configuration
 model: 'faster_rcnn'
 backbone: 'resnet18'
-num_classes: 20
+num_classes: 22
 img_height: 640
 img_width: 640
 
@@ -33,7 +33,7 @@ active_learning_epochs: 5
 unlabel_data: 'unlabel'
 sampling_num: 10
 active_learning_strategy: 'least_confidence'
-score_threshold: 0.9
+score_threshold: 0.999
 
 # Device configuration
 device: 'gpu'

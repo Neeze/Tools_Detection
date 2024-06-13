@@ -3,7 +3,7 @@ import time
 import os
 from tqdm import tqdm
 from .logger import *
-from .metrics import calculate_map
+from .metrics import calculate_map, calculate_precision_recall, calculate_accuracy
 import torchvision
 from typing import Tuple, List, Dict, Optional
 import torch
@@ -146,6 +146,7 @@ def evaluate(model, data_loader, device, logger):
                 }
             )
         detections = result
+        
         detections = model.transform.postprocess(detections, images.image_sizes, original_image_sizes)  # type: ignore[operator]
         model.rpn.training=False
         model.roi_heads.training=False
@@ -159,8 +160,17 @@ def evaluate(model, data_loader, device, logger):
     # Calculate mAP (you'll need to adapt this to your specific mAP implementation)
     # TODO: Implement mAP calculation for classes
     # Log validation loss and mAP
+    # Calculate mAP, precision, and recall, Accuracy
+    map_value = calculate_map(targets, result, logger.config['num_classes'], iou_threshold=0.5)
+    precision, recall = calculate_precision_recall(targets, result)
+    accuracy = calculate_accuracy(targets, result)
+    
+    print(f"mAP@.5: {map_value:.4f}")
+    print(f"Precision: {precision:.4f}")
+    print(f"Recall: {recall:.4f}")
+    print(f"Accuracy: {accuracy:.4f}")
     epoch_loss /= len(data_loader)
-    logger.log_epoch_metrics(None, None, epoch_loss, None, mAP=None)
+    logger.log_epoch_metrics(None, None, epoch_loss, None, mAP=map_value)
     return epoch_loss
 
 def save_model(model, epoch, optimizer, scheduler, config):
