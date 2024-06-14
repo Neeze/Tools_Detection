@@ -28,12 +28,11 @@ def main(config: dict):
 
     # Create model
     model = fasterrcnn_resnet18(num_classes=config["num_classes"], pretrained=True, coco_model=True).to(device)
+    optimizer = get_optimizer(model, config)
+    scheduler = get_scheduler(optimizer, config)
     
     if "pretrained_model_path" in config.keys():
-        model, optimizer, scheduler = load_model(model, config["pretrained_model_path"])
-    else:
-        optimizer = get_optimizer(model, config)
-        scheduler = get_scheduler(optimizer, config)
+        model, optimizer, scheduler = load_model(model, optimizer, scheduler, config["pretrained_model_path"])
 
     # Training loop
     start_epoch = 0

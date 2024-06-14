@@ -18,3 +18,5 @@ visualizer.py
 test.py
 
 checkpoints/*.pth
+
+save

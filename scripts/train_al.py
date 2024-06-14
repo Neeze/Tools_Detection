@@ -46,12 +46,12 @@ def main(config):
     train_loader = create_dataloader(config, is_train=True)
     val_loader = create_dataloader(config, is_train=False)
     
+    model = fasterrcnn_resnet18(num_classes=config["num_classes"], pretrained=True, coco_model=True).to(device)
+    optimizer = get_optimizer(model, config)
+    scheduler = get_scheduler(optimizer, config)
+    
     if "pretrained_model_path" in config.keys():
-        model, optimizer, scheduler = load_model(model, config["pretrained_model_path"])
-    else:
-        model = fasterrcnn_resnet18(num_classes=num_classes, pretrained=True, coco_model=True).to(device)
-        optimizer = get_optimizer(model, config)
-        scheduler = get_scheduler(optimizer, config)
+        model, optimizer, scheduler = load_model(model, optimizer, scheduler, config["pretrained_model_path"])
     
     
     logger = TrainingLogger(config)
