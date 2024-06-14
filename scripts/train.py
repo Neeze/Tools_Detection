@@ -8,7 +8,7 @@ from src.utils.dataloader import create_dataloader
 from src.utils.get_optimizer import get_optimizer
 from src.utils.get_scheduler import get_scheduler
 from src.utils.logger import TrainingLogger
-from src.utils.general_utils import read_config
+from src.utils.general_utils import read_config, summary
 from src.utils.engine import train_one_epoch, evaluate, save_model, load_model
 
 def get_args():
@@ -32,8 +32,12 @@ def main(config: dict):
     scheduler = get_scheduler(optimizer, config)
     
     if "pretrained_model_path" in config.keys():
+        print(f"Loading pretrained model from {config['pretrained_model_path']}")
         model, optimizer, scheduler = load_model(model, optimizer, scheduler, config["pretrained_model_path"])
-
+        
+    print("Model Summary:")
+    summary(model)
+    
     # Training loop
     start_epoch = 0
     num_epochs = config["num_epochs"]

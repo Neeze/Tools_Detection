@@ -11,7 +11,7 @@ from src.utils.engine import train_one_epoch, evaluate, load_model
 from src.utils.get_optimizer import get_optimizer
 from src.utils.get_scheduler import get_scheduler
 from src.utils.logger import TrainingLogger
-from src.utils.general_utils import read_config
+from src.utils.general_utils import read_config, summary
 from src.utils.label_panel import visualize_predictions
 from src.utils.sampling import uncertainty_sampling
 from torchvision import transforms
@@ -51,8 +51,11 @@ def main(config):
     scheduler = get_scheduler(optimizer, config)
     
     if "pretrained_model_path" in config.keys():
+        print(f"Loading pretrained model from {config['pretrained_model_path']}")
         model, optimizer, scheduler = load_model(model, optimizer, scheduler, config["pretrained_model_path"])
-    
+        
+    print("Model Summary:")
+    summary(model)
     
     logger = TrainingLogger(config)
 

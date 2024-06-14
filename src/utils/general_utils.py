@@ -1,4 +1,6 @@
 import yaml
+import torchinfo
+import torch
 
 def read_config(config_path: str) -> dict:
     """Reads a YAML configuration file and returns it as a dictionary.
@@ -22,6 +24,23 @@ def read_config(config_path: str) -> dict:
         raise yaml.YAMLError(f"Error parsing YAML file: {e}")
 
     return config
+
+
+def summary(model):
+    # Torchvision Faster RCNN models are enclosed within a tuple ().
+    if type(model) == tuple:
+        model = model[0]
+    device = 'cpu'
+    batch_size = 4
+    channels = 3
+    img_height = 640
+    img_width = 640
+    torchinfo.summary(
+        model, 
+        device=device, 
+        input_size=[batch_size, channels, img_height, img_width],
+        row_settings=["var_names"]
+    )
 
 # Example usage:
 if __name__ == "__main__":

@@ -12,7 +12,6 @@ test_data: 'test'
 
 # Model configuration
 model: 'faster_rcnn'
-pretrained_model_path: 'checkpoints/resnet18_best.pth'
 backbone: 'resnet18'
 num_classes: 22
 img_height: 640
